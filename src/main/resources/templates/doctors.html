@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctors - Hospital Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar .nav-link {
+            color: #333;
+            border-radius: 0;
+        }
+
+        .sidebar .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+        .sidebar .nav-link:hover {
+            background-color: #f8f9fa;
+        }
+
+        .doctor-card {
+            transition: transform 0.3s;
+        }
+
+        .doctor-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .specialty-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container"></div>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar bg-light p-0">
+            <div class="d-flex flex-column p-3">
+                <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
+                    <i class="fas fa-hospital me-2"></i>
+                    <span class="fs-4">MediCare</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/dashboard" class="nav-link link-dark">
+                            <i class="fas fa-tachometer-alt me-2"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/patients" class="nav-link link-dark">
+                            <i class="fas fa-user-injured me-2"></i>
+                            Patients
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/doctors" class="nav-link active">
+                            <i class="fas fa-user-md me-2"></i>
+                            Doctors
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/appointments" class="nav-link link-dark">
+                            <i class="fas fa-calendar-check me-2"></i>
+                            Appointments
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle" id="dropdownUser2" data-bs-toggle="dropdown" aria-expanded="false">
+                        <img src="https://via.placeholder.com/32" alt="User" width="32" height="32" class="rounded-circle me-2">
+                        <strong th:text="${user != null ? user : 'Admin User'}">Admin User</strong>
+                    </a>
+                    <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownUser2">
+                        <li><a class="dropdown-item" href="#">Profile</a></li>
+                        <li><a class="dropdown-item" href="#">Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/logout">Sign out</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 ms-sm-auto px-4 py-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Doctor Directory</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-2">
+                        <i class="fas fa-file-export me-1"></i>
+                        Export
+                    </button>
+                    <a href="#" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addDoctorModal">
+                        <i class="fas fa-plus me-1"></i>
+                        Add New Doctor
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search doctors..." id="searchInput">
+                        <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-end">
+                        <div class="dropdown me-2">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-filter me-1"></i>
+                                Specialty
+                            </button>
+                            <ul class="dropdown-menu" id="specialtyFilter">
+                                <li><a class="dropdown-item filter-option" href="#" data-specialty="">All Specialties</a></li>
+                                <li><a class="dropdown-item filter-option" href="#" data-specialty="Cardiology">Cardiology</a></li>
+                                <li><a class="dropdown-item filter-option" href="#" data-specialty="Neurology">Neurology</a></li>
+                                <li><a class="dropdown-item filter-option" href="#" data-specialty="Pediatrics">Pediatrics</a></li>
+                                <li><a class="dropdown-item filter-option" href="#" data-specialty="Orthopedics">Orthopedics</a></li>
+                            </ul>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-sort me-1"></i>
+                                Sort
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#">Name (A-Z)</a></li>
+                                <li><a class="dropdown-item" href="#">Name (Z-A)</a></li>
+                                <li><a class="dropdown-item" href="#">Experience</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Doctors Grid -->
+            <div class="row" id="doctorsGrid">
+                <!-- Doctors will be loaded here via JavaScript -->
+            </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation example" id="paginationContainer">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#">Previous</a>
+                    </li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Add Doctor Modal -->
+<div class="modal fade" id="addDoctorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Doctor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addDoctorForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="firstName" class="form-label">First Name *</label>
+                            <input type="text" class="form-control" id="firstName" required>
+                            <div class="invalid-feedback">Please provide a first name.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="lastName" class="form-label">Last Name *</label>
+                            <input type="text" class="form-control" id="lastName" required>
+                            <div class="invalid-feedback">Please provide a last name.</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" required>
+                        <div class="invalid-feedback">Please provide a valid email address.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="specialization" class="form-label">Specialty *</label>
+                        <select class="form-select" id="specialization" required>
+                            <option value="">Select Specialty</option>
+                            <option value="Cardiology">Cardiology</option>
+                            <option value="Neurology">Neurology</option>
+                            <option value="Pediatrics">Pediatrics</option>
+                            <option value="Orthopedics">Orthopedics</option>
+                            <option value="Dermatology">Dermatology</option>
+                            <option value="Oncology">Oncology</option>
+                        </select>
+                        <div class="invalid-feedback">Please select a specialty.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="yearsOfExperience" class="form-label">Years of Experience</label>
+                        <input type="number" class="form-control" id="yearsOfExperience" min="0">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="submitDoctorBtn">Add Doctor</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Doctor Modal -->
+<div class="modal fade" id="editDoctorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Doctor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDoctorForm">
+                    <input type="hidden" id="editDoctorId">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="editFirstName" class="form-label">First Name *</label>
+                            <input type="text" class="form-control" id="editFirstName" required>
+                            <div class="invalid-feedback">Please provide a first name.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editLastName" class="form-label">Last Name *</label>
+                            <input type="text" class="form-control" id="editLastName" required>
+                            <div class="invalid-feedback">Please provide a last name.</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editEmail" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="editEmail" required>
+                        <div class="invalid-feedback">Please provide a valid email address.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPhone" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="editPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSpecialization" class="form-label">Specialty *</label>
+                        <select class="form-select" id="editSpecialization" required>
+                            <option value="">Select Specialty</option>
+                            <option value="Cardiology">Cardiology</option>
+                            <option value="Neurology">Neurology</option>
+                            <option value="Pediatrics">Pediatrics</option>
+                            <option value="Orthopedics">Orthopedics</option>
+                            <option value="Dermatology">Dermatology</option>
+                            <option value="Oncology">Oncology</option>
+                        </select>
+                        <div class="invalid-feedback">Please select a specialty.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editYearsOfExperience" class="form-label">Years of Experience</label>
+                        <input type="number" class="form-control" id="editYearsOfExperience" min="0">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="updateDoctorBtn">Update Doctor</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Doctor Modal -->
+<div class="modal fade" id="viewDoctorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Doctor Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <img src="https://via.placeholder.com/100" alt="Doctor" class="rounded-circle" width="100" height="100">
+                    <h4 id="viewDoctorName" class="mt-2">Dr. John Doe</h4>
+                    <span class="badge bg-primary" id="viewDoctorSpecialty">Cardiologist</span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Professional Information</h6>
+                        <p><strong>ID:</strong> <span id="viewDoctorId">D-1234</span></p>
+                        <p><strong>Specialty:</strong> <span id="viewDoctorSpecialtyText">Cardiology</span></p>
+                        <p><strong>Experience:</strong> <span id="viewDoctorExperience">10 years</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Contact Details</h6>
+                        <p><strong>Email:</strong> <span id="viewDoctorEmail">john.doe@hospital.com</span></p>
+                        <p><strong>Phone:</strong> <span id="viewDoctorPhone">+1 (555) 123-4567</span></p>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <h6>Appointment Statistics</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title" id="viewDoctorTotalAppointments">24</h5>
+                                    <p class="card-text">Total Appointments</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title" id="viewDoctorUpcomingAppointments">5</h5>
+                                    <p class="card-text">Upcoming Appointments</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteDoctorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete doctor: <strong id="deleteDoctorName">Dr. John Doe</strong>?</p>
+                <p class="text-danger">This action cannot be undone. All associated appointments will also be deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Doctor</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // API functions for doctor management
+    const DoctorAPI = {
+        getAll: function() {
+            return fetch('/api/doctors')
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching doctors:', error);
+                    showToast('Error loading doctors', 'danger');
+                    return [];
+                });
+        },
+
+        getById: function(id) {
+            return fetch(`/api/doctors/${id}`)
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching doctor:', error);
+                    showToast('Error loading doctor details', 'danger');
+                    return null;
+                });
+        },
+
+        getBySpecialization: function(specialization) {
+            return fetch(`/api/doctors/specialization/${specialization}`)
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching doctors by specialty:', error);
+                    showToast('Error loading doctors', 'danger');
+                    return [];
+                });
+        },
+
+        create: function(doctor) {
+            return fetch('/api/doctors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(doctor)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Failed to create doctor');
+                }
+            })
+            .catch(error => {
+                console.error('Error creating doctor:', error);
+                throw error;
+            });
+        },
+
+        update: function(id, doctor) {
+            return fetch(`/api/doctors/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(doctor)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Failed to update doctor');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating doctor:', error);
+                throw error;
+            });
+        },
+
+        delete: function(id) {
+            return fetch(`/api/doctors/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete doctor');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting doctor:', error);
+                throw error;
+            });
+        },
+
+        search: function(lastName) {
+            return fetch(`/api/doctors/search?lastName=${encodeURIComponent(lastName)}`)
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error searching doctors:', error);
+                    showToast('Error searching doctors', 'danger');
+                    return [];
+                });
+        }
+    };
+
+    // Utility functions
+    function showToast(message, type = 'success') {
+        const toastContainer = document.querySelector('.toast-container');
+        const toastId = 'toast-' + Date.now();
+
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0`;
+        toast.id = toastId;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+
+        toastContainer.appendChild(toast);
+
+        const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+        bsToast.show();
+
+        // Remove toast from DOM after it's hidden
+        toast.addEventListener('hidden.bs.toast', () => {
+            toast.remove();
+        });
+    }
+
+    function getSpecialtyBadgeClass(specialty) {
+        const specialtyClasses = {
+            'Cardiology': 'bg-primary',
+            'Neurology': 'bg-success',
+            'Pediatrics': 'bg-info',
+            'Orthopedics': 'bg-warning',
+            'Dermatology': 'bg-purple',
+            'Oncology': 'bg-danger'
+        };
+
+        return specialtyClasses[specialty] || 'bg-secondary';
+    }
+
+    // DOM manipulation functions
+    function loadDoctors() {
+        DoctorAPI.getAll()
+            .then(doctors => {
+                const doctorsGrid = document.getElementById('doctorsGrid');
+                doctorsGrid.innerHTML = '';
+
+                if (doctors.length === 0) {
+                    doctorsGrid.innerHTML = `
+                        <div class="col-12 text-center py-5">
+                            <i class="fas fa-user-md fa-3x text-muted mb-3"></i>
+                            <h4>No doctors found</h4>
+                            <p class="text-muted">Add your first doctor to get started.</p>
+                            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addDoctorModal">
+                                <i class="fas fa-plus me-1"></i>Add Doctor
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                doctors.forEach(doctor => {
+                    const specialtyClass = getSpecialtyBadgeClass(doctor.specialization);
+
+                    const col = document.createElement('div');
+                    col.className = 'col-xl-3 col-lg-4 col-md-6 mb-4';
+                    col.innerHTML = `
+                        <div class="card doctor-card shadow h-100">
+                            <div class="card-body text-center">
+                                <img src="https://via.placeholder.com/100" alt="Doctor" class="rounded-circle mb-3" width="100" height="100">
+                                <h5 class="card-title">Dr. ${doctor.firstName} ${doctor.lastName}</h5>
+                                <span class="specialty-badge ${specialtyClass}">${doctor.specialization}</span>
+                                <p class="text-muted mt-2">${doctor.yearsOfExperience || '0'} years experience</p>
+                                <div class="d-flex justify-content-center mt-3">
+                                    <button type="button" class="btn btn-sm btn-outline-primary me-1 view-doctor" data-id="${doctor.id}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1 edit-doctor" data-id="${doctor.id}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger delete-doctor" data-id="${doctor.id}" data-name="Dr. ${doctor.firstName} ${doctor.lastName}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <small class="text-muted">${doctor.email}</small>
+                            </div>
+                        </div>
+                    `;
+                    doctorsGrid.appendChild(col);
+                });
+
+                // Add event listeners to the buttons
+                attachEventListeners();
+            });
+    }
+
+    function loadDoctorsBySpecialty(specialty) {
+        if (!specialty) {
+            loadDoctors();
+            return;
+        }
+
+        DoctorAPI.getBySpecialization(specialty)
+            .then(doctors => {
+                const doctorsGrid = document.getElementById('doctorsGrid');
+                doctorsGrid.innerHTML = '';
+
+                if (doctors.length === 0) {
+                    doctorsGrid.innerHTML = `
+                        <div class="col-12 text-center py-5">
+                            <i class="fas fa-user-md fa-3x text-muted mb-3"></i>
+                            <h4>No ${specialty} specialists found</h4>
+                            <p class="text-muted">Try a different specialty or add a new doctor.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                doctors.forEach(doctor => {
+                    const specialtyClass = getSpecialtyBadgeClass(doctor.specialization);
+
+                    const col = document.createElement('div');
+                    col.className = 'col-xl-3 col-lg-4 col-md-6 mb-4';
+                    col.innerHTML = `
+                        <div class="card doctor-card shadow h-100">
+                            <div class="card-body text-center">
+                                <img src="https://via.placeholder.com/100" alt="Doctor" class="rounded-circle mb-3" width="100" height="100">
+                                <h5 class="card-title">Dr. ${doctor.firstName} ${doctor.lastName}</h5>
+                                <span class="specialty-badge ${specialtyClass}">${doctor.specialization}</span>
+                                <p class="text-muted mt-2">${doctor.yearsOfExperience || '0'} years experience</p>
+                                <div class="d-flex justify-content-center mt-3">
+                                    <button type="button" class="btn btn-sm btn-outline-primary me-1 view-doctor" data-id="${doctor.id}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1 edit-doctor" data-id="${doctor.id}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger delete-doctor" data-id="${doctor.id}" data-name="Dr. ${doctor.firstName} ${doctor.lastName}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <small class="text-muted">${doctor.email}</small>
+                            </div>
+                        </div>
+                    `;
+                    doctorsGrid.appendChild(col);
+                });
+
+                // Add event listeners to the buttons
+                attachEventListeners();
+            });
+    }
+
+    function attachEventListeners() {
+        // View doctor buttons
+        document.querySelectorAll('.view-doctor').forEach(button => {
+            button.addEventListener('click', function() {
+                const doctorId = this.getAttribute('data-id');
+                viewDoctor(doctorId);
+            });
+        });
+
+        // Edit doctor buttons
+        document.querySelectorAll('.edit-doctor').forEach(button => {
+            button.addEventListener('click', function() {
+                const doctorId = this.getAttribute('data-id');
+                editDoctor(doctorId);
+            });
+        });
+
+        // Delete doctor buttons
+        document.querySelectorAll('.delete-doctor').forEach(button => {
+            button.addEventListener('click', function() {
+                const doctorId = this.getAttribute('data-id');
+                const doctorName = this.getAttribute('data-name');
+                confirmDelete(doctorId, doctorName);
+            });
+        });
+    }
+
+    function viewDoctor(doctorId) {
+        DoctorAPI.getById(doctorId)
+            .then(doctor => {
+                if (doctor) {
+                    document.getElementById('viewDoctorName').textContent = `Dr. ${doctor.firstName} ${doctor.lastName}`;
+                    document.getElementById('viewDoctorId').textContent = doctor.id;
+                    document.getElementById('viewDoctorEmail').textContent = doctor.email;
+                    document.getElementById('viewDoctorPhone').textContent = doctor.phoneNumber || 'N/A';
+                    document.getElementById('viewDoctorSpecialty').textContent = doctor.specialization;
+                    document.getElementById('viewDoctorSpecialtyText').textContent = doctor.specialization;
+                    document.getElementById('viewDoctorExperience').textContent = `${doctor.yearsOfExperience || '0'} years`;
+
+                    // Set specialty badge class
+                    const specialtyBadge = document.getElementById('viewDoctorSpecialty');
+                    specialtyBadge.className = `badge ${getSpecialtyBadgeClass(doctor.specialization)}`;
+
+                    // TODO: Load appointment statistics from API
+                    document.getElementById('viewDoctorTotalAppointments').textContent = '24';
+                    document.getElementById('viewDoctorUpcomingAppointments').textContent = '5';
+
+                    const viewModal = new bootstrap.Modal(document.getElementById('viewDoctorModal'));
+                    viewModal.show();
+                }
+            });
+    }
+
+    function editDoctor(doctorId) {
+        DoctorAPI.getById(doctorId)
+            .then(doctor => {
+                if (doctor) {
+                    document.getElementById('editDoctorId').value = doctor.id;
+                    document.getElementById('editFirstName').value = doctor.firstName;
+                    document.getElementById('editLastName').value = doctor.lastName;
+                    document.getElementById('editEmail').value = doctor.email;
+                    document.getElementById('editPhone').value = doctor.phoneNumber || '';
+                    document.getElementById('editSpecialization').value = doctor.specialization || '';
+                    document.getElementById('editYearsOfExperience').value = doctor.yearsOfExperience || '';
+
+                    const editModal = new bootstrap.Modal(document.getElementById('editDoctorModal'));
+                    editModal.show();
+                }
+            });
+    }
+
+    function confirmDelete(doctorId, doctorName) {
+        document.getElementById('deleteDoctorName').textContent = doctorName;
+        document.getElementById('confirmDeleteBtn').setAttribute('data-id', doctorId);
+
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteDoctorModal'));
+        deleteModal.show();
+    }
+
+    // Event handlers
+    document.getElementById('submitDoctorBtn').addEventListener('click', function() {
+        const form = document.getElementById('addDoctorForm');
+
+        // Basic validation
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const doctor = {
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            email: document.getElementById('email').value,
+            phoneNumber: document.getElementById('phone').value,
+            specialization: document.getElementById('specialization').value,
+            yearsOfExperience: document.getElementById('yearsOfExperience').value ? parseInt(document.getElementById('yearsOfExperience').value) : 0
+        };
+
+        DoctorAPI.create(doctor)
+            .then(newDoctor => {
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addDoctorModal'));
+                modal.hide();
+
+                // Reset the form
+                form.reset();
+                form.classList.remove('was-validated');
+
+                // Show success message
+                showToast('Doctor added successfully!');
+
+                // Reload the doctor list
+                loadDoctors();
+            })
+            .catch(error => {
+                showToast('Error adding doctor. Email may already exist.', 'danger');
+            });
+    });
+
+    document.getElementById('updateDoctorBtn').addEventListener('click', function() {
+        const form = document.getElementById('editDoctorForm');
+        const doctorId = document.getElementById('editDoctorId').value;
+
+        // Basic validation
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const doctor = {
+            firstName: document.getElementById('editFirstName').value,
+            lastName: document.getElementById('editLastName').value,
+            email: document.getElementById('editEmail').value,
+            phoneNumber: document.getElementById('editPhone').value,
+            specialization: document.getElementById('editSpecialization').value,
+            yearsOfExperience: document.getElementById('editYearsOfExperience').value ? parseInt(document.getElementById('editYearsOfExperience').value) : 0
+        };
+
+        DoctorAPI.update(doctorId, doctor)
+            .then(updatedDoctor => {
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editDoctorModal'));
+                modal.hide();
+
+                // Show success message
+                showToast('Doctor updated successfully!');
+
+                // Reload the doctor list
+                loadDoctors();
+            })
+            .catch(error => {
+                showToast('Error updating doctor.', 'danger');
+            });
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        const doctorId = this.getAttribute('data-id');
+
+        DoctorAPI.delete(doctorId)
+            .then(() => {
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteDoctorModal'));
+                modal.hide();
+
+                // Show success message
+                showToast('Doctor deleted successfully!');
+
+                // Reload the doctor list
+                loadDoctors();
+            })
+            .catch(error => {
+                showToast('Error deleting doctor.', 'danger');
+            });
+    });
+
+    document.getElementById('searchButton').addEventListener('click', function() {
+        const searchTerm = document.getElementById('searchInput').value.trim();
+
+        if (searchTerm) {
+            DoctorAPI.search(searchTerm)
+                .then(doctors => {
+                    const doctorsGrid = document.getElementById('doctorsGrid');
+                    doctorsGrid.innerHTML = '';
+
+                    if (doctors.length === 0) {
+                        doctorsGrid.innerHTML = `
+                            <div class="col-12 text-center py-5">
+                                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                                <h4>No doctors found matching "${searchTerm}"</h4>
+                                <p class="text-muted">Try a different search term.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    doctors.forEach(doctor => {
+                        const specialtyClass = getSpecialtyBadgeClass(doctor.specialization);
+
+                        const col = document.createElement('div');
+                        col.className = 'col-xl-3 col-lg-4 col-md-6 mb-4';
+                        col.innerHTML = `
+                            <div class="card doctor-card shadow h-100">
+                                <div class="card-body text-center">
+                                    <img src="https://via.placeholder.com/100" alt="Doctor" class="rounded-circle mb-3" width="100" height="100">
+                                    <h5 class="card-title">Dr. ${doctor.firstName} ${doctor.lastName}</h5>
+                                    <span class="specialty-badge ${specialtyClass}">${doctor.specialization}</span>
+                                    <p class="text-muted mt-2">${doctor.yearsOfExperience || '0'} years experience</p>
+                                    <div class="d-flex justify-content-center mt-3">
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1 view-doctor" data-id="${doctor.id}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-1 edit-doctor" data-id="${doctor.id}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger delete-doctor" data-id="${doctor.id}" data-name="Dr. ${doctor.firstName} ${doctor.lastName}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <small class="text-muted">${doctor.email}</small>
+                                </div>
+                            </div>
+                        `;
+                        doctorsGrid.appendChild(col);
+                    });
+
+                    // Add event listeners to the buttons
+                    attachEventListeners();
+                });
+        } else {
+            loadDoctors();
+        }
+    });
+
+    // Specialty filter event listeners
+    document.querySelectorAll('.filter-option').forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const specialty = this.getAttribute('data-specialty');
+            loadDoctorsBySpecialty(specialty);
+        });
+    });
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDoctors();
+
+        // Clear form when modal is closed
+        document.getElementById('addDoctorModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('addDoctorForm').reset();
+            document.getElementById('addDoctorForm').classList.remove('was-validated');
+        });
+
+        // Clear form when modal is closed
+        document.getElementById('editDoctorModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('editDoctorForm').classList.remove('was-validated');
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments - Hospital Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar .nav-link {
+            color: #333;
+            border-radius: 0;
+        }
+
+        .sidebar .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+        .sidebar .nav-link:hover {
+            background-color: #f8f9fa;
+        }
+
+        .appointment-table img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .calendar-day {
+            border: 1px solid #dee2e6;
+            height: 120px;
+            padding: 10px;
+            position: relative;
+        }
+
+        .calendar-day.active {
+            background-color: #e9ecef;
+        }
+
+        .calendar-day.today {
+            background-color: #d1ecf1;
+        }
+
+        .calendar-event {
+            font-size: 12px;
+            padding: 2px 5px;
+            margin-bottom: 2px;
+            border-radius: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .bg-purple {
+            background-color: #6f42c1 !important;
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container"></div>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar bg-light p-0">
+            <div class="d-flex flex-column p-3">
+                <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
+                    <i class="fas fa-hospital me-2"></i>
+                    <span class="fs-4">MediCare</span>
+                </a>
+                <hr>
+                <ul class="nav nav-pills flex-column mb-auto">
+                    <li class="nav-item">
+                        <a href="/dashboard" class="nav-link link-dark">
+                            <i class="fas fa-tachometer-alt me-2"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/patients" class="nav-link link-dark">
+                            <i class="fas fa-user-injured me-2"></i>
+                            Patients
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/doctors" class="nav-link link-dark">
+                            <i class="fas fa-user-md me-2"></i>
+                            Doctors
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/appointments" class="nav-link active">
+                            <i class="fas fa-calendar-check me-2"></i>
+                            Appointments
+                        </a>
+                    </li>
+                </ul>
+                <hr>
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle" id="dropdownUser2" data-bs-toggle="dropdown" aria-expanded="false">
+                        <img src="https://via.placeholder.com/32" alt="User" width="32" height="32" class="rounded-circle me-2">
+                        <strong th:text="${user != null ? user : 'Admin User'}">Admin User</strong>
+                    </a>
+                    <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownUser2">
+                        <li><a class="dropdown-item" href="#">Profile</a></li>
+                        <li><a class="dropdown-item" href="#">Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/logout">Sign out</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 ms-sm-auto px-4 py-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Appointment Scheduling</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-calendar me-1"></i>
+                            Day
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary active">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            Week
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-calendar-day me-1"></i>
+                            Month
+                        </button>
+                    </div>
+                    <a href="#" class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#addAppointmentModal">
+                        <i class="fas fa-plus me-1"></i>
+                        Schedule Appointment
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search appointments..." id="searchInput">
+                        <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-end">
+                        <div class="dropdown me-2">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-filter me-1"></i>
+                                Status
+                            </button>
+                            <ul class="dropdown-menu" id="statusFilter">
+                                <li><a class="dropdown-item filter-option" href="#" data-status="">All Statuses</a></li>
+                                <li><a class="dropdown-item filter-option" href="#" data-status="SCHEDULED">Scheduled</a></li>
+                                <li><a class="dropdown-item filter-option" href="#" data-status="CONFIRMED">Confirmed</a></li>
+                                <li><a class="dropdown-item filter-option" href="#" data-status="COMPLETED">Completed</a></li>
+                                <li><a class="dropdown-item filter-option" href="#" data-status="CANCELLED">Cancelled</a></li>
+                            </ul>
+                        </div>
+                        <div class="dropdown me-2">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user-md me-1"></i>
+                                Doctor
+                            </button>
+                            <ul class="dropdown-menu" id="doctorFilter">
+                                <li><a class="dropdown-item filter-option" href="#" data-doctor="">All Doctors</a></li>
+                                <!-- Will be populated by JavaScript -->
+                            </ul>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-sort me-1"></i>
+                                Sort
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#">Date (Newest First)</a></li>
+                                <li><a class="dropdown-item" href="#">Date (Oldest First)</a></li>
+                                <li><a class="dropdown-item" href="#">Patient Name</a></li>
+                                <li><a class="dropdown-item" href="#">Doctor Name</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Appointments List -->
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-primary">Today's Appointments</h6>
+                    <span class="badge bg-primary" id="appointmentCount">0 appointments</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover appointment-table">
+                            <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Patient</th>
+                                <th>Doctor</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody id="appointmentsTableBody">
+                            <!-- Appointments will be loaded here via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav aria-label="Page navigation example" id="paginationContainer">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#">Previous</a>
+                            </li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            <li class="page-item">
+                                <a class="page-link" href="#">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Appointment Modal -->
+<div class="modal fade" id="addAppointmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule New Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAppointmentForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appointmentPatient" class="form-label">Patient *</label>
+                                <select class="form-select" id="appointmentPatient" required>
+                                    <option value="">Select Patient</option>
+                                    <!-- Will be populated by JavaScript -->
+                                </select>
+                                <div class="invalid-feedback">Please select a patient.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appointmentDoctor" class="form-label">Doctor *</label>
+                                <select class="form-select" id="appointmentDoctor" required>
+                                    <option value="">Select Doctor</option>
+                                    <!-- Will be populated by JavaScript -->
+                                </select>
+                                <div class="invalid-feedback">Please select a doctor.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appointmentDate" class="form-label">Date *</label>
+                                <input type="date" class="form-control" id="appointmentDate" required>
+                                <div class="invalid-feedback">Please select a date.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appointmentTime" class="form-label">Time *</label>
+                                <input type="time" class="form-control" id="appointmentTime" required>
+                                <div class="invalid-feedback">Please select a time.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="appointmentType" class="form-label">Appointment Type *</label>
+                        <select class="form-select" id="appointmentType" required>
+                            <option value="">Select Type</option>
+                            <option value="CONSULTATION">Consultation</option>
+                            <option value="FOLLOW_UP">Follow-up</option>
+                            <option value="CHECK_UP">Check-up</option>
+                            <option value="EMERGENCY">Emergency</option>
+                            <option value="ROUTINE">Routine</option>
+                        </select>
+                        <div class="invalid-feedback">Please select an appointment type.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="appointmentReason" class="form-label">Reason</label>
+                        <textarea class="form-control" id="appointmentReason" rows="3" placeholder="Brief reason for the appointment"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="appointmentStatus" class="form-label">Status *</label>
+                        <select class="form-select" id="appointmentStatus" required>
+                            <option value="SCHEDULED">Scheduled</option>
+                            <option value="CONFIRMED">Confirmed</option>
+                            <option value="CANCELLED">Cancelled</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info text-white" id="submitAppointmentBtn">Schedule Appointment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Appointment Modal -->
+<div class="modal fade" id="editAppointmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editAppointmentForm">
+                    <input type="hidden" id="editAppointmentId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppointmentPatient" class="form-label">Patient *</label>
+                                <select class="form-select" id="editAppointmentPatient" required>
+                                    <option value="">Select Patient</option>
+                                    <!-- Will be populated by JavaScript -->
+                                </select>
+                                <div class="invalid-feedback">Please select a patient.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppointmentDoctor" class="form-label">Doctor *</label>
+                                <select class="form-select" id="editAppointmentDoctor" required>
+                                    <option value="">Select Doctor</option>
+                                    <!-- Will be populated by JavaScript -->
+                                </select>
+                                <div class="invalid-feedback">Please select a doctor.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppointmentDate" class="form-label">Date *</label>
+                                <input type="date" class="form-control" id="editAppointmentDate" required>
+                                <div class="invalid-feedback">Please select a date.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppointmentTime" class="form-label">Time *</label>
+                                <input type="time" class="form-control" id="editAppointmentTime" required>
+                                <div class="invalid-feedback">Please select a time.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editAppointmentType" class="form-label">Appointment Type *</label>
+                        <select class="form-select" id="editAppointmentType" required>
+                            <option value="">Select Type</option>
+                            <option value="CONSULTATION">Consultation</option>
+                            <option value="FOLLOW_UP">Follow-up</option>
+                            <option value="CHECK_UP">Check-up</option>
+                            <option value="EMERGENCY">Emergency</option>
+                            <option value="ROUTINE">Routine</option>
+                        </select>
+                        <div class="invalid-feedback">Please select an appointment type.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editAppointmentReason" class="form-label">Reason</label>
+                        <textarea class="form-control" id="editAppointmentReason" rows="3" placeholder="Brief reason for the appointment"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editAppointmentStatus" class="form-label">Status *</label>
+                        <select class="form-select" id="editAppointmentStatus" required>
+                            <option value="SCHEDULED">Scheduled</option>
+                            <option value="CONFIRMED">Confirmed</option>
+                            <option value="COMPLETED">Completed</option>
+                            <option value="CANCELLED">Cancelled</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="updateAppointmentBtn">Update Appointment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Appointment Modal -->
+<div class="modal fade" id="viewAppointmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Appointment Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <i class="fas fa-calendar-check fa-3x text-primary mb-3"></i>
+                    <h4 id="viewAppointmentTitle">Appointment Details</h4>
+                    <span class="badge bg-success" id="viewAppointmentStatus">Scheduled</span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Appointment Information</h6>
+                        <p><strong>ID:</strong> <span id="viewAppointmentId">A-1234</span></p>
+                        <p><strong>Date:</strong> <span id="viewAppointmentDate">2023-06-20</span></p>
+                        <p><strong>Time:</strong> <span id="viewAppointmentTime">10:00 AM</span></p>
+                        <p><strong>Type:</strong> <span id="viewAppointmentType">Consultation</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Participants</h6>
+                        <p><strong>Patient:</strong> <span id="viewAppointmentPatient">John Doe</span></p>
+                        <p><strong>Doctor:</strong> <span id="viewAppointmentDoctor">Dr. Sarah Johnson</span></p>
+                        <p><strong>Specialty:</strong> <span id="viewAppointmentSpecialty">Cardiology</span></p>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <h6>Reason</h6>
+                    <p id="viewAppointmentReason">Routine checkup and consultation</p>
+                </div>
+
+                <div class="mt-3">
+                    <h6>Notes</h6>
+                    <textarea class="form-control" id="viewAppointmentNotes" rows="3" placeholder="Add notes about the appointment"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveNotesBtn">Save Notes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteAppointmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Cancellation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this appointment?</p>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <p><strong>Patient:</strong> <span id="deleteAppointmentPatient">John Doe</span></p>
+                        <p><strong>Doctor:</strong> <span id="deleteAppointmentDoctor">Dr. Sarah Johnson</span></p>
+                        <p><strong>Date:</strong> <span id="deleteAppointmentDate">2023-06-20</span></p>
+                        <p><strong>Time:</strong> <span id="deleteAppointmentTime">10:00 AM</span></p>
+                    </div>
+                </div>
+                <p class="text-danger mt-3">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Appointment</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Cancel Appointment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // API functions for appointment management
+    const AppointmentAPI = {
+        getAll: function() {
+            return fetch('/api/appointments')
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching appointments:', error);
+                    showToast('Error loading appointments', 'danger');
+                    return [];
+                });
+        },
+
+        getById: function(id) {
+            return fetch(`/api/appointments/${id}`)
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching appointment:', error);
+                    showToast('Error loading appointment details', 'danger');
+                    return null;
+                });
+        },
+
+        getByStatus: function(status) {
+            return fetch(`/api/appointments/status/${status}`)
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching appointments by status:', error);
+                    showToast('Error loading appointments', 'danger');
+                    return [];
+                });
+        },
+
+        getByDoctor: function(doctorId) {
+            return fetch(`/api/appointments/doctor/${doctorId}`)
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching appointments by doctor:', error);
+                    showToast('Error loading appointments', 'danger');
+                    return [];
+                });
+        },
+
+        create: function(appointment) {
+            return fetch('/api/appointments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(appointment)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Failed to create appointment');
+                }
+            })
+            .catch(error => {
+                console.error('Error creating appointment:', error);
+                throw error;
+            });
+        },
+
+        update: function(id, appointment) {
+            return fetch(`/api/appointments/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(appointment)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Failed to update appointment');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating appointment:', error);
+                throw error;
+            });
+        },
+
+        delete: function(id) {
+            return fetch(`/api/appointments/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete appointment');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting appointment:', error);
+                throw error;
+            });
+        }
+    };
+
+    // API functions for patient and doctor data
+    const DataAPI = {
+        getPatients: function() {
+            return fetch('/api/patients')
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching patients:', error);
+                    return [];
+                });
+        },
+
+        getDoctors: function() {
+            return fetch('/api/doctors')
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching doctors:', error);
+                    return [];
+                });
+        }
+    };
+
+    // Utility functions
+    function showToast(message, type = 'success') {
+        const toastContainer = document.querySelector('.toast-container');
+        const toastId = 'toast-' + Date.now();
+
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0`;
+        toast.id = toastId;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+
+        toastContainer.appendChild(toast);
+
+        const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+        bsToast.show();
+
+        // Remove toast from DOM after it's hidden
+        toast.addEventListener('hidden.bs.toast', () => {
+            toast.remove();
+        });
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString();
+    }
+
+    function formatTime(timeString) {
+        if (!timeString) return 'N/A';
+        const time = new Date(`2000-01-01T${timeString}`);
+        return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function getStatusBadgeClass(status) {
+        const statusClasses = {
+            'SCHEDULED': 'bg-info',
+            'CONFIRMED': 'bg-success',
+            'COMPLETED': 'bg-secondary',
+            'CANCELLED': 'bg-danger'
+        };
+
+        return statusClasses[status] || 'bg-warning';
+    }
+
+    function getStatusText(status) {
+        const statusText = {
+            'SCHEDULED': 'Scheduled',
+            'CONFIRMED': 'Confirmed',
+            'COMPLETED': 'Completed',
+            'CANCELLED': 'Cancelled'
+        };
+
+        return statusText[status] || status;
+    }
+
+    // DOM manipulation functions
+    function loadAppointments() {
+        AppointmentAPI.getAll()
+            .then(appointments => {
+                const tableBody = document.getElementById('appointmentsTableBody');
+                tableBody.innerHTML =
+                document.getElementById('appointmentCount').textContent = `${appointments.length} appointments`;
+
+                if (appointments.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="fas fa-calendar-times fa-2x text-muted mb-2"></i>
+                                <p>No appointments found. Schedule your first appointment to get started.</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                appointments.forEach(appointment => {
+                    const statusClass = getStatusBadgeClass(appointment.status);
+                    const statusText = getStatusText(appointment.status);
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <div class="fw-bold">${formatTime(appointment.appointmentTime)}</div>
+                            <small class="text-muted">${formatDate(appointment.appointmentDate)}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="https://via.placeholder.com/40" alt="Patient" class="me-3">
+                                <div>
+                                    <div class="fw-bold">${appointment.patient.firstName} ${appointment.patient.lastName}</div>
+                                    <small class="text-muted">ID: ${appointment.patient.id}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold">Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}</div>
+                            <small class="text-muted">${appointment.doctor.specialization}</small>
+                        </td>
+                        <td>${appointment.type || 'Consultation'}</td>
+                        <td>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-primary view-appointment" data-id="${appointment.id}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary edit-appointment" data-id="${appointment.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-appointment" data-id="${appointment.id}" data-patient="${appointment.patient.firstName} ${appointment.patient.lastName}" data-doctor="Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}" data-date="${formatDate(appointment.appointmentDate)}" data-time="${formatTime(appointment.appointmentTime)}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                // Add event listeners to the buttons
+                attachEventListeners();
+            });
+    }
+
+    function loadAppointmentsByStatus(status) {
+        if (!status) {
+            loadAppointments();
+            return;
+        }
+
+        AppointmentAPI.getByStatus(status)
+            .then(appointments => {
+                const tableBody = document.getElementById('appointmentsTableBody');
+                tableBody.innerHTML = '';
+                document.getElementById('appointmentCount').textContent = `${appointments.length} ${status.toLowerCase()} appointments`;
+
+                if (appointments.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                                <p>No ${status.toLowerCase()} appointments found.</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                appointments.forEach(appointment => {
+                    const statusClass = getStatusBadgeClass(appointment.status);
+                    const statusText = getStatusText(appointment.status);
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <div class="fw-bold">${formatTime(appointment.appointmentTime)}</div>
+                            <small class="text-muted">${formatDate(appointment.appointmentDate)}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="https://via.placeholder.com/40" alt="Patient" class="me-3">
+                                <div>
+                                    <div class="fw-bold">${appointment.patient.firstName} ${appointment.patient.lastName}</div>
+                                    <small class="text-muted">ID: ${appointment.patient.id}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold">Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}</div>
+                            <small class="text-muted">${appointment.doctor.specialization}</small>
+                        </td>
+                        <td>${appointment.type || 'Consultation'}</td>
+                        <td>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-primary view-appointment" data-id="${appointment.id}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary edit-appointment" data-id="${appointment.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-appointment" data-id="${appointment.id}" data-patient="${appointment.patient.firstName} ${appointment.patient.lastName}" data-doctor="Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}" data-date="${formatDate(appointment.appointmentDate)}" data-time="${formatTime(appointment.appointmentTime)}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                // Add event listeners to the buttons
+                attachEventListeners();
+            });
+    }
+
+    function loadAppointmentsByDoctor(doctorId) {
+        if (!doctorId) {
+            loadAppointments();
+            return;
+        }
+
+        AppointmentAPI.getByDoctor(doctorId)
+            .then(appointments => {
+                const tableBody = document.getElementById('appointmentsTableBody');
+                tableBody.innerHTML = '';
+                document.getElementById('appointmentCount').textContent = `${appointments.length} appointments`;
+
+                if (appointments.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                                <p>No appointments found for this doctor.</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                appointments.forEach(appointment => {
+                    const statusClass = getStatusBadgeClass(appointment.status);
+                    const statusText = getStatusText(appointment.status);
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <div class="fw-bold">${formatTime(appointment.appointmentTime)}</div>
+                            <small class="text-muted">${formatDate(appointment.appointmentDate)}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="https://via.placeholder.com/40" alt="Patient" class="me-3">
+                                <div>
+                                    <div class="fw-bold">${appointment.patient.firstName} ${appointment.patient.lastName}</div>
+                                    <small class="text-muted">ID: ${appointment.patient.id}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold">Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}</div>
+                            <small class="text-muted">${appointment.doctor.specialization}</small>
+                        </td>
+                        <td>${appointment.type || 'Consultation'}</td>
+                        <td>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-primary view-appointment" data-id="${appointment.id}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary edit-appointment" data-id="${appointment.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-appointment" data-id="${appointment.id}" data-patient="${appointment.patient.firstName} ${appointment.patient.lastName}" data-doctor="Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}" data-date="${formatDate(appointment.appointmentDate)}" data-time="${formatTime(appointment.appointmentTime)}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                // Add event listeners to the buttons
+                attachEventListeners();
+            });
+    }
+
+    function populateSelectOptions() {
+        // Load patients for dropdown
+        DataAPI.getPatients()
+            .then(patients => {
+                const patientSelect = document.getElementById('appointmentPatient');
+                const editPatientSelect = document.getElementById('editAppointmentPatient');
+
+                // Clear existing options except the first one
+                while (patientSelect.options.length > 1) patientSelect.remove(1);
+                while (editPatientSelect.options.length > 1) editPatientSelect.remove(1);
+
+                patients.forEach(patient => {
+                    const option = document.createElement('option');
+                    option.value = patient.id;
+                    option.textContent = `${patient.firstName} ${patient.lastName} (ID: ${patient.id})`;
+
+                    patientSelect.appendChild(option.cloneNode(true));
+                    editPatientSelect.appendChild(option);
+                });
+            });
+
+        // Load doctors for dropdown
+        DataAPI.getDoctors()
+            .then(doctors => {
+                const doctorSelect = document.getElementById('appointmentDoctor');
+                const editDoctorSelect = document.getElementById('editAppointmentDoctor');
+                const doctorFilter = document.getElementById('doctorFilter');
+
+                // Clear existing options except the first one
+                while (doctorSelect.options.length > 1) doctorSelect.remove(1);
+                while (editDoctorSelect.options.length > 1) editDoctorSelect.remove(1);
+
+                // Clear doctor filter options except the first one
+                while (doctorFilter.children.length > 1) doctorFilter.removeChild(doctorFilter.lastChild);
+
+                doctors.forEach(doctor => {
+                    // Add to select dropdowns
+                    const option = document.createElement('option');
+                    option.value = doctor.id;
+                    option.textContent = `Dr. ${doctor.firstName} ${doctor.lastName} (${doctor.specialization})`;
+
+                    doctorSelect.appendChild(option.cloneNode(true));
+                    editDoctorSelect.appendChild(option.cloneNode(true));
+
+                    // Add to filter dropdown
+                    const filterItem = document.createElement('li');
+                    const filterLink = document.createElement('a');
+                    filterLink.className = 'dropdown-item filter-option';
+                    filterLink.href = '#';
+                    filterLink.setAttribute('data-doctor', doctor.id);
+                    filterLink.textContent = `Dr. ${doctor.firstName} ${doctor.lastName}`;
+
+                    filterItem.appendChild(filterLink);
+                    doctorFilter.appendChild(filterItem);
+                });
+            });
+    }
+
+    function attachEventListeners() {
+        // View appointment buttons
+        document.querySelectorAll('.view-appointment').forEach(button => {
+            button.addEventListener('click', function() {
+                const appointmentId = this.getAttribute('data-id');
+                viewAppointment(appointmentId);
+            });
+        });
+
+        // Edit appointment buttons
+        document.querySelectorAll('.edit-appointment').forEach(button => {
+            button.addEventListener('click', function() {
+                const appointmentId = this.getAttribute('data-id');
+                editAppointment(appointmentId);
+            });
+        });
+
+        // Delete appointment buttons
+        document.querySelectorAll('.delete-appointment').forEach(button => {
+            button.addEventListener('click', function() {
+                const appointmentId = this.getAttribute('data-id');
+                const patientName = this.getAttribute('data-patient');
+                const doctorName = this.getAttribute('data-doctor');
+                const appointmentDate = this.getAttribute('data-date');
+                const appointmentTime = this.getAttribute('data-time');
+
+                confirmDelete(appointmentId, patientName, doctorName, appointmentDate, appointmentTime);
+            });
+        });
+    }
+
+    function viewAppointment(appointmentId) {
+        AppointmentAPI.getById(appointmentId)
+            .then(appointment => {
+                if (appointment) {
+                    document.getElementById('viewAppointmentId').textContent = appointment.id;
+                    document.getElementById('viewAppointmentDate').textContent = formatDate(appointment.appointmentDate);
+                    document.getElementById('viewAppointmentTime').textContent = formatTime(appointment.appointmentTime);
+                    document.getElementById('viewAppointmentType').textContent = appointment.type || 'Consultation';
+                    document.getElementById('viewAppointmentPatient').textContent = `${appointment.patient.firstName} ${appointment.patient.lastName}`;
+                    document.getElementById('viewAppointmentDoctor').textContent = `Dr. ${appointment.doctor.firstName} ${appointment.doctor.lastName}`;
+                    document.getElementById('viewAppointmentSpecialty').textContent = appointment.doctor.specialization;
+                    document.getElementById('viewAppointmentReason').textContent = appointment.reason || 'No reason provided';
+                    document.getElementById('viewAppointmentStatus').textContent = getStatusText(appointment.status);
+
+                    // Set status badge class
+                    const statusBadge = document.getElementById('viewAppointmentStatus');
+                    statusBadge.className = `badge ${getStatusBadgeClass(appointment.status)}`;
+
+                    const viewModal = new bootstrap.Modal(document.getElementById('viewAppointmentModal'));
+                    viewModal.show();
+                }
+            });
+    }
+
+    function editAppointment(appointmentId) {
+        AppointmentAPI.getById(appointmentId)
+            .then(appointment => {
+                if (appointment) {
+                    document.getElementById('editAppointmentId').value = appointment.id;
+                    document.getElementById('editAppointmentPatient').value = appointment.patient.id;
+                    document.getElementById('editAppointmentDoctor').value = appointment.doctor.id;
+                    document.getElementById('editAppointmentDate').value = appointment.appointmentDate;
+                    document.getElementById('editAppointmentTime').value = appointment.appointmentTime;
+                    document.getElementById('editAppointmentType').value = appointment.type || 'CONSULTATION';
+                    document.getElementById('editAppointmentReason').value = appointment.reason || '';
+                    document.getElementById('editAppointmentStatus').value = appointment.status || 'SCHEDULED';
+
+                    const editModal = new bootstrap.Modal(document.getElementById('editAppointmentModal'));
+                    editModal.show();
+                }
+            });
+    }
+
+    function confirmDelete(appointmentId, patientName, doctorName, appointmentDate, appointmentTime) {
+        document.getElementById('deleteAppointmentPatient').textContent = patientName;
+        document.getElementById('deleteAppointmentDoctor').textContent = doctorName;
+        document.getElementById('deleteAppointmentDate').textContent = appointmentDate;
+        document.getElementById('deleteAppointmentTime').textContent = appointmentTime;
+        document.getElementById('confirmDeleteBtn').setAttribute('data-id', appointmentId);
+
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteAppointmentModal'));
+        deleteModal.show();
+    }
+
+    // Event handlers
+    document.getElementById('submitAppointmentBtn').addEventListener('click', function() {
+        const form = document.getElementById('addAppointmentForm');
+
+        // Basic validation
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const appointment = {
+            patient: { id: document.getElementById('appointmentPatient').value },
+            doctor: { id: document.getElementById('appointmentDoctor').value },
+            appointmentDate: document.getElementById('appointmentDate').value,
+            appointmentTime: document.getElementById('appointmentTime').value,
+            type: document.getElementById('appointmentType').value,
+            reason: document.getElementById('appointmentReason').value,
+            status: document.getElementById('appointmentStatus').value
+        };
+
+        AppointmentAPI.create(appointment)
+            .then(newAppointment => {
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addAppointmentModal'));
+                modal.hide();
+
+                // Reset the form
+                form.reset();
+                form.classList.remove('was-validated');
+
+                // Show success message
+                showToast('Appointment scheduled successfully!');
+
+                // Reload the appointment list
+                loadAppointments();
+            })
+            .catch(error => {
+                showToast('Error scheduling appointment.', 'danger');
+            });
+    });
+
+    document.getElementById('updateAppointmentBtn').addEventListener('click', function() {
+        const form = document.getElementById('editAppointmentForm');
+        const appointmentId = document.getElementById('editAppointmentId').value;
+
+        // Basic validation
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const appointment = {
+            patient: { id: document.getElementById('editAppointmentPatient').value },
+            doctor: { id: document.getElementById('editAppointmentDoctor').value },
+            appointmentDate: document.getElementById('editAppointmentDate').value,
+            appointmentTime: document.getElementById('editAppointmentTime').value,
+            type: document.getElementById('editAppointmentType').value,
+            reason: document.getElementById('editAppointmentReason').value,
+            status: document.getElementById('editAppointmentStatus').value
+        };
+
+        AppointmentAPI.update(appointmentId, appointment)
+            .then(updatedAppointment => {
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editAppointmentModal'));
+                modal.hide();
+
+                // Show success message
+                showToast('Appointment updated successfully!');
+
+                // Reload the appointment list
+                loadAppointments();
+            })
+            .catch(error => {
+                showToast('Error updating appointment.', 'danger');
+            });
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        const appointmentId = this.getAttribute('data-id');
+
+        AppointmentAPI.delete(appointmentId)
+            .then(() => {
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteAppointmentModal'));
+                modal.hide();
+
+                // Show success message
+                showToast('Appointment cancelled successfully!');
+
+                // Reload the appointment list
+                loadAppointments();
+            })
+            .catch(error => {
+                showToast('Error cancelling appointment.', 'danger');
+            });
+    });
+
+    // Status filter event listeners
+    document.querySelectorAll('#statusFilter .filter-option').forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const status = this.getAttribute('data-status');
+            loadAppointmentsByStatus(status);
+        });
+    });
+
+    // Doctor filter event listeners (delegated since elements are added dynamically)
+    document.getElementById('doctorFilter').addEventListener('click', function(e) {
+        if (e.target.classList.contains('filter-option')) {
+            e.preventDefault();
+            const doctorId = e.target.getAttribute('data-doctor');
+            loadAppointmentsByDoctor(doctorId);
+        }
+    });
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAppointments();
+        populateSelectOptions();
+
+        // Clear form when modal is closed
+        document.getElementById('addAppointmentModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('addAppointmentForm').reset();
+            document.getElementById('addAppointmentForm').classList.remove('was-validated');
+        });
+
+        // Clear form when modal is closed
+        document.getElementById('editAppointmentModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('editAppointmentForm').classList.remove('was-validated');
+        });
+
+        // Set default date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('appointmentDate').value = today;
+        document.getElementById('editAppointmentDate').value = today;
+    });
+</script>
+</body>
+</html>
