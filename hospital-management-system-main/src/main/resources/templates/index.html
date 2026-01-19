@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .hero-section {
+            background: linear-gradient(rgba(0, 123, 255, 0.8), rgba(0, 86, 179, 0.8)), url('https://img.freepik.com/premium-photo/group-indian-doctors-standing-with-hands-folded_1029679-7456.jpg?w=2000');
+            background-size: cover;
+            background-position: center;
+            color: white;
+            padding: 100px 0;
+            margin-bottom: 30px;
+        }
+
+        .feature-card {
+            transition: transform 0.3s;
+            height: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .stat-card {
+           border-left: 4px solid #fd9c0d;
+        }
+    </style>
+</head>
+<body>
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="#">
+            <i class="fas fa-hospital me-2"></i>MediCare System
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/dashboard">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/patients">Patients</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/doctors">Doctors</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/appointments">Appointments</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/login">Login</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<div class="hero-section text-center">
+    <div class="container">
+        <h1 class="display-4 fw-bold">Hospital Management System</h1>
+        <p class="lead">Efficient patient care and management solution</p>
+        <a href="/dashboard" class="btn btn-light btn-lg mt-3">
+            <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="container mb-5">
+    <h2 class="text-center mb-4">Key Features</h2>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card feature-card shadow">
+                <div class="card-body text-center p-4">
+                    <div class="bg-primary rounded-circle d-inline-flex p-3 mb-3">
+                        <i class="fas fa-user-injured fa-2x text-white"></i>
+                    </div>
+                    <h3 class="card-title">Patient Management</h3>
+                    <p class="card-text">Register and manage patient records with ease. Keep track of medical history, appointments, and treatments.</p>
+                    <a href="/patients" class="btn btn-primary">Manage Patients</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card feature-card shadow">
+                <div class="card-body text-center p-4">
+                    <div class="bg-success rounded-circle d-inline-flex p-3 mb-3">
+                        <i class="fas fa-user-md fa-2x text-white"></i>
+                    </div>
+                    <h3 class="card-title">Doctor Directory</h3>
+                    <p class="card-text">Access information about medical professionals. Manage schedules, specialties, and availability.</p>
+                    <a href="/doctors" class="btn btn-success">View Doctors</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card feature-card shadow">
+                <div class="card-body text-center p-4">
+                    <div class="bg-info rounded-circle d-inline-flex p-3 mb-3">
+                        <i class="fas fa-calendar-check fa-2x text-white"></i>
+                    </div>
+                    <h3 class="card-title">Appointment Scheduling</h3>
+                    <p class="card-text">Schedule and manage patient appointments seamlessly. Reduce wait times and optimize resources.</p>
+                    <a href="/appointments" class="btn btn-info text-white">Schedule Now</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Section -->
+<div class="bg-light py-5">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="card stat-card mb-3">
+                    <div class="card-body">
+                        <h3 class="text-primary" th:text="${patientCount != null ? patientCount : '1,248'}">1,248</h3>
+                        <p class="text-muted">Total Patients</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card mb-3">
+                    <div class="card-body">
+                        <h3 class="text-success" th:text="${doctorCount != null ? doctorCount : '64'}">64</h3>
+                        <p class="text-muted">Medical Staff</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card mb-3">
+                    <div class="card-body">
+                        <h3 class="text-info" th:text="${appointmentCount != null ? appointmentCount : '186'}">186</h3>
+                        <p class="text-muted">Today's Appointments</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card mb-3">
+                    <div class="card-body">
+                        <h3 class="text-warning">98%</h3>
+                        <p class="text-muted">Satisfaction Rate</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="bg-dark text-white py-4 mt-5">
+    <div class="container text-center">
+        <p>&copy; 2025 Hospital Management System. All rights reserved.</p>
+        <div class="mt-2">
+            <a href="#" class="text-white me-3"><i class="fab fa-facebook-f"></i></a>
+            <a href="#" class="text-white me-3"><i class="fab fa-twitter"></i></a>
+            <a href="#" class="text-white me-3"><i class="fab fa-linkedin-in"></i></a>
+            <a href="#" class="text-white"><i class="fab fa-instagram"></i></a>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
